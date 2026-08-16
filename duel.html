@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>رودررو — نبرد دو نفره</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Black+Ops+One&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0f0c; --olive:#5a6b3a; --olive-dim:#39432688; --amber:#e8a33d;
+    --red:#c1443c; --steel:#4fa3b5; --teal:#3d9b7a; --ink:#e9e6d8; --ink-dim:#9aa08c; --line:#3a4530;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{ margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:var(--bg); color:var(--ink);
+    font-family:'Chakra Petch', sans-serif; touch-action:none; -webkit-user-select:none; user-select:none; }
+  .stencil{ font-family:'Black Ops One', sans-serif; letter-spacing:1px; }
+  #game-root{ position:fixed; inset:0; width:100%; height:100%; }
+  canvas#arena{ position:absolute; inset:0; width:100%; height:100%; display:block; background:#0b0f0c; }
+
+  .screen{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:12px; padding:26px 20px; text-align:center;
+    background: linear-gradient(180deg, rgba(11,15,12,0.94), rgba(11,15,12,0.98)),
+      repeating-linear-gradient(45deg, transparent 0 18px, rgba(90,107,58,0.05) 18px 19px);
+    z-index:20; }
+  .hidden{ display:none !important; }
+
+  .brand-eyebrow{ font-size:11px; letter-spacing:4px; color:var(--amber); opacity:.85; border:1px solid var(--olive-dim); padding:4px 12px; border-radius:2px;}
+  .brand-title{ font-size:34px; color:var(--ink); margin:6px 0 0 0; line-height:1.3; text-shadow:0 0 18px rgba(232,163,61,.25);}
+  .brand-sub{ font-size:14px; color:var(--ink-dim); max-width:320px; line-height:1.9; margin-bottom:4px;}
+
+  input.text-input{ width:min(280px,78vw); padding:14px 16px; font-size:17px; background:#0f140c; border:1px solid var(--olive);
+    color:var(--ink); border-radius:3px; text-align:center; font-family:inherit; outline:none; letter-spacing:2px;}
+  input.text-input:focus{ border-color:var(--amber); box-shadow:0 0 0 2px rgba(232,163,61,.2);}
+
+  .btn{ font-family:'Chakra Petch', sans-serif; font-weight:700; font-size:16px; padding:14px 28px; border-radius:3px;
+    border:1px solid var(--olive); background:linear-gradient(180deg, #3d4a26, #262f16); color:var(--ink);
+    letter-spacing:1px; cursor:pointer; min-width:230px;}
+  .btn:active{ transform:translateY(1px);}
+  .btn-primary{ border-color:var(--amber); background:linear-gradient(180deg,#8a5a1f,#5c3a12); color:#fff3dc;}
+  .btn-steel{ border-color:var(--steel); background:linear-gradient(180deg,#2b5c68,#173842); color:#dff5fa;}
+  .btn-ghost{ background:transparent; border-color:var(--line); color:var(--ink-dim); font-size:13px; padding:10px 20px; min-width:0;}
+  .divider{ width:60px; height:1px; background:var(--line); margin:4px 0;}
+
+  .code-display{ font-family:'Black Ops One',sans-serif; font-size:42px; letter-spacing:10px; color:var(--amber);
+    background:#12180f; border:1px solid var(--olive); border-radius:4px; padding:14px 22px; }
+  .pulse-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--teal); margin-inline-end:6px;
+    animation: pulse 1.2s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:.3;} 50%{opacity:1;} }
+  .err-note{ color:var(--red); font-size:13px; min-height:16px; }
+
+  .board-wrap{ width:min(400px,88vw); max-height:50vh; overflow-y:auto; border:1px solid var(--line); border-radius:4px; background:#0e130b;}
+  table.board{ width:100%; border-collapse:collapse; font-size:14px;}
+  table.board th{ position:sticky; top:0; background:#171f10; color:var(--amber); font-weight:600; padding:8px 6px; font-size:11px; letter-spacing:1px; border-bottom:1px solid var(--line);}
+  table.board td{ padding:7px 6px; border-bottom:1px solid #1b2314; color:var(--ink);}
+  table.board tr:first-child td{ color:var(--amber); font-weight:700;}
+  table.board td.rank{ color:var(--ink-dim); width:26px;}
+  table.board td.num{ font-family:'Chakra Petch',sans-serif; text-align:left; direction:ltr;}
+  .empty-note{ padding:22px; color:var(--ink-dim); font-size:13px;}
+
+  #hud{ position:absolute; inset:0; pointer-events:none; z-index:10; }
+  .hud-top{ position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; align-items:flex-start; padding:12px 14px; gap:10px;}
+  .player-tag{ background:rgba(15,20,12,.72); border:1px solid var(--line); border-radius:4px; padding:6px 10px; font-size:12px; backdrop-filter:blur(2px); min-width:90px;}
+  .player-tag.me{ border-color:var(--teal); }
+  .player-tag.opp{ border-color:var(--red); text-align:left;}
+  .player-tag .pname{ font-size:12px; margin-bottom:3px; color:var(--ink-dim);}
+  .hearts{ display:flex; gap:3px;}
+  .player-tag.opp .hearts{ justify-content:flex-end;}
+  .heart{ width:15px; height:15px;}
+
+  #joyzone{ position:absolute; left:0; bottom:0; width:46%; height:52%; pointer-events:auto;}
+  #joy-base{ position:absolute; width:100px; height:100px; border-radius:50%; border:2px solid rgba(232,163,61,.35); background:rgba(90,107,58,.12); display:none;}
+  #joy-knob{ position:absolute; width:44px; height:44px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #e8c98d, #8a5a1f); box-shadow:0 0 12px rgba(232,163,61,.5);}
+
+  #fire-btn{ position:absolute; right:26px; bottom:34px; width:84px; height:84px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #e88a7a, #7a2a26); border:2px solid #e85d4d;
+    box-shadow:0 0 16px rgba(200,60,50,.5); pointer-events:auto; display:flex; align-items:center; justify-content:center;
+    font-family:'Chakra Petch',sans-serif; font-weight:700; color:#fff0ec; font-size:13px;}
+  #fire-btn:active{ transform:scale(.92); }
+
+  .center-msg{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; z-index:16; flex-direction:column; gap:8px;}
+  .center-msg .stencil{ font-size:34px; text-shadow:0 2px 14px rgba(0,0,0,.7);}
+  .center-msg .sub{ font-size:14px; color:var(--ink-dim); }
+
+  .countdown-num{ font-size:80px; }
+
+  .mode-grid{ display:flex; flex-direction:column; gap:10px; width:min(280px,80vw); margin-top:4px;}
+  .stat-row{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:2px 0 6px;}
+  .stat-pill{ background:#161f0d; border:1px solid var(--line); border-radius:3px; padding:6px 12px; font-size:13px;}
+  .stat-pill b{ color:var(--amber);}
+</style>
+</head>
+<body>
+<div id="game-root">
+  <canvas id="arena"></canvas>
+
+  <!-- NAME ENTRY -->
+  <div id="screen-name" class="screen">
+    <div class="brand-eyebrow">نبرد دو نفره</div>
+    <h1 class="brand-title stencil">رودررو</h1>
+    <p class="brand-sub">اسمت رو وارد کن، بعد یا برای دوستت لینک کد رو بفرست یا با ربات بجنگ. هر کدوم ۳ جون دارید.</p>
+    <input id="input-name" class="text-input" type="text" maxlength="14" placeholder="اسمت رو وارد کن…">
+    <button id="btn-name-next" class="btn btn-primary">ادامه</button>
+    <button id="btn-open-board-1" class="btn btn-ghost">🏆 جدول بردها</button>
+  </div>
+
+  <!-- MODE SELECT -->
+  <div id="screen-mode" class="screen hidden">
+    <div class="brand-eyebrow">انتخاب حالت</div>
+    <h2 class="brand-title stencil" style="font-size:26px;">آماده نبرد؟</h2>
+    <div class="mode-grid">
+      <button id="btn-mode-create" class="btn btn-primary">🌐 ساخت بازی آنلاین</button>
+      <button id="btn-mode-join" class="btn btn-steel">🔑 ورود با کد</button>
+      <button id="btn-mode-bot" class="btn">🤖 نبرد با ربات</button>
+    </div>
+    <button id="btn-mode-changename" class="btn btn-ghost">✏️ تغییر نام (<span id="mode-current-name"></span>)</button>
+  </div>
+
+  <!-- CREATE / WAITING -->
+  <div id="screen-waiting" class="screen hidden">
+    <div class="brand-eyebrow">در انتظار حریف</div>
+    <h2 class="brand-title stencil" style="font-size:24px;">این کد رو برای دوستت بفرست</h2>
+    <div class="code-display" id="waiting-code">----</div>
+    <p class="brand-sub"><span class="pulse-dot"></span>در انتظار پیوستن حریف…</p>
+    <button id="btn-waiting-cancel" class="btn btn-ghost">لغو</button>
+  </div>
+
+  <!-- JOIN -->
+  <div id="screen-join" class="screen hidden">
+    <div class="brand-eyebrow">پیوستن به بازی</div>
+    <h2 class="brand-title stencil" style="font-size:26px;">کد رو وارد کن</h2>
+    <input id="input-code" class="text-input" type="tel" maxlength="4" placeholder="----" inputmode="numeric">
+    <div class="err-note" id="join-err"></div>
+    <button id="btn-join-go" class="btn btn-primary">پیوستن</button>
+    <button id="btn-join-back" class="btn btn-ghost">بازگشت</button>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div id="screen-board" class="screen hidden">
+    <div class="brand-eyebrow">لیدربورد</div>
+    <h2 class="brand-title stencil" style="font-size:26px;">برترین‌های نبرد</h2>
+    <div id="board-container" class="board-wrap"></div>
+    <button id="btn-board-back" class="btn btn-ghost">بازگشت</button>
+  </div>
+
+  <!-- END -->
+  <div id="screen-end" class="screen hidden">
+    <div class="brand-eyebrow" id="end-eyebrow">پایان نبرد</div>
+    <h1 class="brand-title stencil" id="end-title">؟</h1>
+    <div class="stat-row"><div class="stat-pill">در حال بازگشت به صفحه اسم…</div></div>
+    <div class="divider"></div>
+    <div id="board-container-end" class="board-wrap"></div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div class="hud-top">
+      <div class="player-tag me">
+        <div class="pname" id="tag-me-name">من</div>
+        <div class="hearts" id="hearts-me"></div>
+      </div>
+      <div class="player-tag opp">
+        <div class="pname" id="tag-opp-name">حریف</div>
+        <div class="hearts" id="hearts-opp"></div>
+      </div>
+    </div>
+    <div class="center-msg" id="center-msg">
+      <span class="stencil countdown-num" id="center-num"></span>
+      <span class="sub" id="center-sub"></span>
+    </div>
+    <div id="joyzone"><div id="joy-base"><div id="joy-knob"></div></div></div>
+    <div id="fire-btn">شلیک</div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   STORAGE HELPERS
+============================================================ */
+const WIN_KEY = "duel-leaderboard";
+const NAME_KEY = "duel-player-name";
+
+async function loadSavedName(){
+  try{
+    const res = await window.storage.get(NAME_KEY, false);
+    return res ? res.value : null;
+  }catch(e){ return null; }
+}
+async function saveName(name){
+  try{ await window.storage.set(NAME_KEY, name, false); }catch(e){}
+}
+async function clearSavedName(){
+  try{ await window.storage.delete(NAME_KEY, false); }catch(e){}
+}
+
+async function loadBoard(){
+  try{
+    const res = await window.storage.get(WIN_KEY, true);
+    if(!res) return [];
+    const arr = JSON.parse(res.value);
+    return Array.isArray(arr) ? arr : [];
+  }catch(e){ return []; }
+}
+async function recordWin(name){
+  try{
+    let list = await loadBoard();
+    let entry = list.find(e=>e.name === name);
+    if(entry){ entry.wins += 1; }
+    else { list.push({name, wins:1}); }
+    list.sort((a,b)=> b.wins - a.wins);
+    list = list.slice(0,100);
+    await window.storage.set(WIN_KEY, JSON.stringify(list), true);
+    return list;
+  }catch(e){ return null; }
+}
+function persianDigits(n){
+  const map=["۰","۱","۲","۳","۴","۵","۶","۷","۸","۹"];
+  return String(n).replace(/[0-9]/g,d=>map[d]);
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function renderBoard(container, list){
+  if(!list || list.length===0){
+    container.innerHTML = `<div class="empty-note">هنوز کسی برنده نشده. اولین نفر باش!</div>`;
+    return;
+  }
+  const rows = list.slice(0,20).map((e,i)=>`<tr>
+    <td class="rank">${persianDigits(i+1)}</td>
+    <td>${escapeHtml(e.name)}</td>
+    <td class="num">${persianDigits(e.wins)}</td>
+  </tr>`).join("");
+  container.innerHTML = `<table class="board"><thead><tr><th>#</th><th>نام</th><th>برد</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function roomGet(key){
+  try{ const r = await window.storage.get(key, true); return r ? JSON.parse(r.value) : null; }
+  catch(e){ return null; }
+}
+async function roomSet(key, obj){
+  try{ return await window.storage.set(key, JSON.stringify(obj), true); }
+  catch(e){ return null; }
+}
+async function roomDel(key){
+  try{ await window.storage.delete(key, true); }catch(e){}
+}
+
+/* ============================================================
+   CANVAS / VIRTUAL ARENA (fixed coord space so both devices match)
+============================================================ */
+const canvas = document.getElementById("arena");
+const ctx = canvas.getContext("2d");
+let W=0,H=0,DPR=Math.min(window.devicePixelRatio||1,2);
+const AW = 720, AH = 1280; // virtual arena size
+let scale=1, offX=0, offY=0;
+
+function resize(){
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W*DPR; canvas.height = H*DPR;
+  canvas.style.width=W+"px"; canvas.style.height=H+"px";
+  scale = Math.min(W/AW, H/AH);
+  offX = (W - AW*scale)/2;
+  offY = (H - AH*scale)/2;
+  ctx.setTransform(DPR*scale,0,0,DPR*scale, DPR*offX, DPR*offY);
+}
+window.addEventListener("resize", resize);
+resize();
+
+/* ============================================================
+   STATE
+============================================================ */
+let myName = "";
+let mode = null; // 'bot' | 'host' | 'join'
+let roomCode = null;
+let mySlot = null; // 'p1' or 'p2'
+let oppName = "";
+let matchActive = false;
+let matchEnded = false;
+let netTimer = null;
+let waitTimer = null;
+let shotCounter = 0;
+let processedShotIds = new Set();
+let leaderboardCredited = false;
+
+let me, opp, myBullets, oppBullets, particles, walls;
+let joy = {active:false, dx:0, dy:0, id:null};
+let lastTime = 0, raf = null;
+
+const HIT_INVULN = 700; // ms
+
+function freshFighter(x,y,name){
+  return { x,y, r:16, speed:210, hp:3, maxHp:3, alive:true, facing:-Math.PI/2, invuln:0, name };
+}
+
+/* ---------- symmetric wall generation for fairness ---------- */
+function generateWalls(){
+  const list = [];
+  const pairCount = 3 + Math.floor(Math.random()*4); // 3-6 pairs
+  let tries=0;
+  while(list.length < pairCount*2 && tries < 200){
+    tries++;
+    const w = 60+Math.random()*100, h = 22+Math.random()*22;
+    const x = 40 + Math.random()*(AW/2 - 80 - w);
+    const y = 90 + Math.random()*(AH - 260 - h);
+    const rectA = {x,y,w,h};
+    const rectB = {x:AW-x-w, y:AH-y-h, w, h};
+    // avoid overlapping spawn zones
+    if(rectA.y < 170 || rectA.y > AH-170){ continue; }
+    list.push(rectA, rectB);
+  }
+  return list;
+}
+
+function dist(x1,y1,x2,y2){ return Math.hypot(x1-x2,y1-y2); }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+function rectHit(px,py,pr,rect){
+  const cx = clamp(px, rect.x, rect.x+rect.w);
+  const cy = clamp(py, rect.y, rect.y+rect.h);
+  return dist(px,py,cx,cy) < pr;
+}
+function rectListHit(px,py,pr,list){
+  for(const r of list) if(rectHit(px,py,pr,r)) return true;
+  return false;
+}
+function tryMove(ent, nx, ny, r){
+  if(!rectListHit(nx, ent.y, r, walls)) ent.x = clamp(nx, r, AW-r);
+  if(!rectListHit(ent.x, ny, r, walls)) ent.y = clamp(ny, r, AH-r);
+}
+function spawnParticles(x,y,color,count){
+  for(let i=0;i<count;i++){
+    const a = Math.random()*Math.PI*2, sp=60+Math.random()*160;
+    particles.push({x,y,vx:Math.cos(a)*sp, vy:Math.sin(a)*sp, life:0.5+Math.random()*0.4, maxLife:0.9, color});
+  }
+}
+
+/* ============================================================
+   SETUP MATCH
+============================================================ */
+function setupMatch(oName, wallsData){
+  walls = wallsData || generateWalls();
+  me = freshFighter(AW*0.28, mySlot==='p2' ? AH-140 : 140, myName);
+  opp = freshFighter(AW*0.72, mySlot==='p2' ? 140 : AH-140, oName || "حریف");
+  // Both spawn opposite corners regardless of slot to mirror properly
+  if(mode === 'bot'){
+    me.x = AW*0.3; me.y = AH-140;
+    opp.x = AW*0.7; opp.y = 140;
+  } else if(mySlot === 'p1'){
+    me.x = AW*0.3; me.y = AH-140;
+    opp.x = AW*0.7; opp.y = 140;
+  } else {
+    me.x = AW*0.7; me.y = 140;
+    opp.x = AW*0.3; opp.y = AH-140;
+  }
+  myBullets = []; oppBullets = []; particles = [];
+  shotCounter = 0; processedShotIds = new Set();
+  matchEnded = false; leaderboardCredited = false;
+  document.getElementById("tag-me-name").textContent = myName;
+  document.getElementById("tag-opp-name").textContent = opp.name;
+  updateHearts();
+}
+
+/* ============================================================
+   INPUT
+============================================================ */
+const joyzone = document.getElementById("joyzone");
+const joyBase = document.getElementById("joy-base");
+const joyKnob = document.getElementById("joy-knob");
+let joyOrigin = {x:0,y:0};
+
+function joyStart(x,y,id){
+  joy.active=true; joy.id=id; joyOrigin={x,y};
+  joyBase.style.display="block";
+  joyBase.style.left=(x-50)+"px"; joyBase.style.top=(y-50)+"px";
+  joyKnob.style.left=(x-22)+"px"; joyKnob.style.top=(y-22)+"px";
+}
+function joyMove(x,y){
+  if(!joy.active) return;
+  let dx=x-joyOrigin.x, dy=y-joyOrigin.y;
+  const maxR=48, d=Math.hypot(dx,dy);
+  if(d>maxR){ dx=dx/d*maxR; dy=dy/d*maxR; }
+  joy.dx=dx/maxR; joy.dy=dy/maxR;
+  joyKnob.style.left=(joyOrigin.x+dx-22)+"px"; joyKnob.style.top=(joyOrigin.y+dy-22)+"px";
+}
+function joyEnd(){ joy.active=false; joy.dx=0; joy.dy=0; joy.id=null; joyBase.style.display="none"; }
+
+joyzone.addEventListener("touchstart", e=>{ e.preventDefault(); const t=e.changedTouches[0]; joyStart(t.clientX,t.clientY,t.identifier); }, {passive:false});
+joyzone.addEventListener("touchmove", e=>{ e.preventDefault(); for(const t of e.changedTouches) if(t.identifier===joy.id) joyMove(t.clientX,t.clientY); }, {passive:false});
+joyzone.addEventListener("touchend", e=>{ e.preventDefault(); for(const t of e.changedTouches) if(t.identifier===joy.id) joyEnd(); }, {passive:false});
+joyzone.addEventListener("touchcancel", joyEnd);
+let mouseDown=false;
+joyzone.addEventListener("mousedown", e=>{ mouseDown=true; joyStart(e.clientX,e.clientY,'m'); });
+window.addEventListener("mousemove", e=>{ if(mouseDown) joyMove(e.clientX,e.clientY); });
+window.addEventListener("mouseup", ()=>{ if(mouseDown){ mouseDown=false; joyEnd(); } });
+
+const keys={};
+window.addEventListener("keydown", e=>{ keys[e.key.toLowerCase()]=true; if(e.key===' ') fire(); });
+window.addEventListener("keyup", e=>{ keys[e.key.toLowerCase()]=false; });
+
+const fireBtn = document.getElementById("fire-btn");
+let fireCd = 0;
+function fire(){
+  if(!matchActive || matchEnded) return;
+  if(fireCd > 0) return;
+  fireCd = 330;
+  const id = mySlot_or_bot()+"-"+(shotCounter++);
+  const bullet = {id, x:me.x, y:me.y, angle:me.facing, t:Date.now()};
+  myBullets.push({x:me.x,y:me.y, vx:Math.cos(me.facing)*440, vy:Math.sin(me.facing)*440, r:5, spawnT:Date.now(), id});
+  pendingShots.push(bullet);
+}
+function mySlot_or_bot(){ return mySlot || 'me'; }
+fireBtn.addEventListener("touchstart", e=>{ e.preventDefault(); fire(); }, {passive:false});
+fireBtn.addEventListener("mousedown", e=>{ fire(); });
+
+let pendingShots = [];
+
+/* ============================================================
+   BOT AI
+============================================================ */
+let botShootCd = 0;
+function updateBot(dt){
+  const d = dist(opp.x,opp.y,me.x,me.y);
+  const preferred = 260;
+  if(d > preferred){
+    let ang = Math.atan2(me.y-opp.y, me.x-opp.x);
+    let nx = opp.x+Math.cos(ang)*140*dt, ny = opp.y+Math.sin(ang)*140*dt;
+    if(rectListHit(nx,ny,opp.r,walls)){
+      let found=false;
+      for(const delta of [0.6,-0.6,1.2,-1.2,1.8,-1.8]){
+        const a2=ang+delta;
+        const tx=opp.x+Math.cos(a2)*140*dt, ty=opp.y+Math.sin(a2)*140*dt;
+        if(!rectListHit(tx,ty,opp.r,walls)){ nx=tx; ny=ty; found=true; break; }
+      }
+      if(!found){ nx=opp.x; ny=opp.y; }
+    }
+    opp.x = clamp(nx, opp.r, AW-opp.r);
+    opp.y = clamp(ny, opp.r, AH-opp.r);
+    opp.facing = ang;
+  } else {
+    opp.facing = Math.atan2(me.y-opp.y, me.x-opp.x);
+  }
+  botShootCd -= dt*1000;
+  const hasLos = !segmentBlocked(opp.x,opp.y,me.x,me.y);
+  if(botShootCd<=0 && d<620 && hasLos){
+    botShootCd = 900 - Math.min(game_level_bonus(),400);
+    const ang = opp.facing + (Math.random()-0.5)*0.18;
+    oppBullets.push({x:opp.x,y:opp.y, vx:Math.cos(ang)*380, vy:Math.sin(ang)*380, r:5});
+  }
+}
+function game_level_bonus(){ return 0; }
+function segmentBlocked(x1,y1,x2,y2){
+  const steps=14;
+  for(let i=1;i<steps;i++){
+    const t=i/steps;
+    const x=x1+(x2-x1)*t, y=y1+(y2-y1)*t;
+    if(rectListHit(x,y,3,walls)) return true;
+  }
+  return false;
+}
+
+/* ============================================================
+   NETWORK SYNC (online mode)
+============================================================ */
+const SYNC_MS = 170;
+
+async function netTick(){
+  if(!matchActive) return;
+  // publish my state
+  const payload = { name:myName, x:me.x, y:me.y, facing:me.facing, hp:me.hp, alive:me.alive, shots: pendingShots.slice(-8), ts: Date.now() };
+  pendingShots = [];
+  roomSet(`duel-room:${roomCode}:${mySlot}`, payload);
+
+  // fetch opponent state
+  const oppSlot = mySlot === 'p1' ? 'p2' : 'p1';
+  const data = await roomGet(`duel-room:${roomCode}:${oppSlot}`);
+  if(data){
+    opp.targetX = data.x; opp.targetY = data.y; opp.facing = data.facing;
+    opp.hp = data.hp; opp.name = data.name || opp.name;
+    if(data.alive === false && opp.alive !== false){
+      opp.alive = false;
+    }
+    if(Array.isArray(data.shots)){
+      for(const s of data.shots){
+        if(processedShotIds.has(s.id)) continue;
+        processedShotIds.add(s.id);
+        const elapsed = clamp((Date.now()-s.t)/1000, 0, 1.2);
+        const vx = Math.cos(s.angle)*440, vy = Math.sin(s.angle)*440;
+        oppBullets.push({x:s.x+vx*elapsed, y:s.y+vy*elapsed, vx, vy, r:5});
+      }
+    }
+    if(opp.alive === false && !matchEnded){
+      finishMatch(true);
+    }
+  }
+}
+
+/* ============================================================
+   UPDATE LOOP
+============================================================ */
+function updateHearts(){
+  function build(hp,maxHp){
+    let s="";
+    for(let i=0;i<maxHp;i++){
+      const filled = i < hp;
+      s += `<svg class="heart" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-10-9.3C.4 8 2 4 6 4c2 0 3.6 1.2 4.5 3C11.4 5.2 13 4 15 4c4 0 5.6 4 4 7.7C19.5 16.4 12 21 12 21z" fill="${filled?'#c1443c':'none'}" stroke="${filled?'#e08078':'#4a4038'}" stroke-width="2"/></svg>`;
+    }
+    return s;
+  }
+  document.getElementById("hearts-me").innerHTML = build(Math.max(0,Math.ceil(me.hp)), me.maxHp);
+  document.getElementById("hearts-opp").innerHTML = build(Math.max(0,Math.ceil(opp.hp)), opp.maxHp);
+}
+
+function update(dt){
+  if(matchEnded) return;
+  fireCd -= dt*1000;
+
+  // movement
+  let mx=joy.dx, my=joy.dy;
+  if(keys['arrowleft']||keys['a']) mx=-1;
+  if(keys['arrowright']||keys['d']) mx=1;
+  if(keys['arrowup']||keys['w']) my=-1;
+  if(keys['arrowdown']||keys['s']) my=1;
+  const mlen = Math.hypot(mx,my);
+  if(mlen>0.15){
+    const nx = me.x + (mx/Math.max(mlen,1))*me.speed*dt*Math.min(mlen,1);
+    const ny = me.y + (my/Math.max(mlen,1))*me.speed*dt*Math.min(mlen,1);
+    tryMove(me, nx, ny, me.r);
+    me.facing = Math.atan2(my,mx);
+  }
+
+  if(mode==='bot') updateBot(dt);
+  else {
+    // interpolate opponent toward target
+    if(opp.targetX !== undefined){
+      opp.x += (opp.targetX - opp.x)*0.28;
+      opp.y += (opp.targetY - opp.y)*0.28;
+    }
+  }
+
+  // move bullets
+  for(const b of myBullets){ b.x+=b.vx*dt; b.y+=b.vy*dt; }
+  myBullets = myBullets.filter(b=> b.x>-20&&b.x<AW+20&&b.y>-20&&b.y<AH+20 && !rectListHit(b.x,b.y,2,walls));
+  for(const b of oppBullets){ b.x+=b.vx*dt; b.y+=b.vy*dt; }
+  oppBullets = oppBullets.filter(b=> b.x>-20&&b.x<AW+20&&b.y>-20&&b.y<AH+20 && !rectListHit(b.x,b.y,2,walls));
+
+  // damage: oppBullets vs me (authoritative on my client)
+  if(me.invuln>0) me.invuln -= dt*1000;
+  for(const b of oppBullets){
+    if(b.dead) continue;
+    if(me.invuln<=0 && dist(b.x,b.y,me.x,me.y) < me.r+b.r){
+      b.dead = true;
+      me.hp -= 1;
+      me.invuln = HIT_INVULN;
+      spawnParticles(me.x,me.y,"#c1443c",16);
+      if(me.hp<=0){
+        me.hp=0; me.alive=false;
+        finishMatch(false);
+      }
+    }
+  }
+  oppBullets = oppBullets.filter(b=>!b.dead);
+
+  // cosmetic: myBullets vs opp (visual spark only; bot mode this IS authoritative)
+  for(const b of myBullets){
+    if(b.dead) continue;
+    if(dist(b.x,b.y,opp.x,opp.y) < opp.r+b.r){
+      b.dead = true;
+      spawnParticles(b.x,b.y,"#e8a33d",10);
+      if(mode==='bot'){
+        if(opp.invuln===undefined) opp.invuln=0;
+        if(opp.invuln<=0){
+          opp.hp -= 1; opp.invuln = HIT_INVULN;
+          if(opp.hp<=0){ opp.hp=0; opp.alive=false; finishMatch(true); }
+        }
+      }
+    }
+  }
+  myBullets = myBullets.filter(b=>!b.dead);
+  if(mode==='bot' && opp.invuln>0) opp.invuln -= dt*1000;
+
+  for(const p of particles){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.92; p.vy*=0.92; p.life-=dt; }
+  particles = particles.filter(p=>p.life>0);
+
+  updateHearts();
+}
+
+function finishMatch(iWon){
+  matchEnded = true;
+  matchActive = false;
+  if(mode !== 'bot' && !iWon && roomCode && mySlot){
+    // publish final "I died" state immediately so opponent's poll detects the win
+    roomSet(`duel-room:${roomCode}:${mySlot}`, { name:myName, x:me.x, y:me.y, facing:me.facing, hp:0, alive:false, shots:[], ts:Date.now() });
+  }
+  if(netTimer){ clearInterval(netTimer); netTimer=null; }
+  spawnParticles(iWon?opp.x:me.x, iWon?opp.y:me.y, iWon?"#8fae5f":"#c1443c", 40);
+  const winnerName = iWon ? myName : opp.name;
+  showEndScreen(winnerName, iWon);
+  if(iWon && !leaderboardCredited){
+    leaderboardCredited = true;
+    recordWin(myName).then(list=>{
+      renderBoard(document.getElementById("board-container-end"), list);
+    });
+  } else {
+    loadBoard().then(list=> renderBoard(document.getElementById("board-container-end"), list));
+  }
+  if(mode !== 'bot' && roomCode){
+    setTimeout(()=>{
+      roomDel(`duel-room:${roomCode}`);
+      roomDel(`duel-room:${roomCode}:p1`);
+      roomDel(`duel-room:${roomCode}:p2`);
+    }, 4000);
+  }
+}
+
+/* ============================================================
+   RENDER
+============================================================ */
+function render(){
+  ctx.clearRect(-offX/scale-10,-offY/scale-10, W/scale+40, H/scale+40);
+  ctx.fillStyle = "#0e130b";
+  ctx.fillRect(0,0,AW,AH);
+
+  ctx.strokeStyle="rgba(90,107,58,0.10)"; ctx.lineWidth=1;
+  const grid=40;
+  for(let x=0;x<AW;x+=grid){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,AH); ctx.stroke(); }
+  for(let y=0;y<AH;y+=grid){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(AW,y); ctx.stroke(); }
+
+  // center divider hint
+  ctx.strokeStyle = "rgba(232,163,61,0.08)"; ctx.setLineDash([10,10]);
+  ctx.beginPath(); ctx.moveTo(0,AH/2); ctx.lineTo(AW,AH/2); ctx.stroke();
+  ctx.setLineDash([]);
+
+  if(!walls) return;
+  for(const o of walls){
+    ctx.fillStyle="#2b3320"; ctx.strokeStyle="#5a6b3a"; ctx.lineWidth=2;
+    ctx.fillRect(o.x,o.y,o.w,o.h); ctx.strokeRect(o.x,o.y,o.w,o.h);
+    ctx.fillStyle="rgba(232,163,61,0.08)"; ctx.fillRect(o.x,o.y,o.w,4);
+  }
+
+  if(me){
+    drawBullets(oppBullets, "#e85d4d");
+    drawBullets(myBullets, "#8fd3e0");
+    drawFighter(opp, "#8a3a34", "#e0806a");
+    drawFighter(me, "#3d6b52", "#8fd36a");
+  }
+
+  for(const p of particles){
+    ctx.globalAlpha = clamp(p.life/p.maxLife,0,1);
+    ctx.beginPath(); ctx.arc(p.x,p.y,3,0,Math.PI*2); ctx.fillStyle=p.color; ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+function drawBullets(list,color){
+  for(const b of list){
+    ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+    ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=8; ctx.fill(); ctx.shadowBlur=0;
+  }
+}
+function drawFighter(f, fill, stroke){
+  if(!f.alive) return;
+  ctx.save();
+  ctx.translate(f.x,f.y);
+  if(f.invuln>0 && Math.floor(f.invuln/100)%2===0){ ctx.globalAlpha = 0.4; }
+  ctx.rotate(f.facing);
+  ctx.beginPath(); ctx.arc(0,0,f.r,0,Math.PI*2);
+  ctx.fillStyle=fill; ctx.shadowColor=stroke; ctx.shadowBlur=10; ctx.fill();
+  ctx.strokeStyle="#e9e6d8"; ctx.lineWidth=2; ctx.stroke(); ctx.shadowBlur=0;
+  ctx.beginPath(); ctx.moveTo(f.r-2,0); ctx.lineTo(f.r+14,0);
+  ctx.strokeStyle="#e9e6d8"; ctx.lineWidth=3; ctx.stroke();
+  ctx.restore();
+  ctx.globalAlpha=1;
+}
+
+/* ============================================================
+   LOOP
+============================================================ */
+function loop(){
+  const now = performance.now();
+  let dt = (now-lastTime)/1000; lastTime = now; dt = Math.min(dt,0.05);
+  if(matchActive) update(dt);
+  render();
+  raf = requestAnimationFrame(loop);
+}
+
+/* ============================================================
+   SCREEN FLOW
+============================================================ */
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+}
+function centerMsgSet(num, sub){
+  document.getElementById("center-num").textContent = num;
+  document.getElementById("center-sub").textContent = sub || "";
+}
+
+function startCountdownThenPlay(){
+  document.getElementById("hud").classList.remove("hidden");
+  document.querySelectorAll(".screen").forEach(s=>s.classList.add("hidden"));
+  let n = 3;
+  centerMsgSet(persianDigits(n), "آماده شو…");
+  const iv = setInterval(()=>{
+    n -= 1;
+    if(n>0){ centerMsgSet(persianDigits(n), "آماده شو…"); }
+    else if(n===0){ centerMsgSet("برو!", ""); }
+    else {
+      clearInterval(iv);
+      document.getElementById("center-msg").style.display="none";
+      matchActive = true;
+      lastTime = performance.now();
+      if(!raf) loop();
+      if(mode !== 'bot'){
+        netTimer = setInterval(netTick, SYNC_MS);
+      }
+    }
+  }, 700);
+}
+
+function showEndScreen(winnerName, iWon){
+  document.getElementById("hud").classList.add("hidden");
+  document.getElementById("center-msg").style.display="flex";
+  document.getElementById("end-eyebrow").textContent = iWon ? "پیروزی" : "شکست";
+  document.getElementById("end-title").textContent = winnerName + " برنده شد!";
+  showScreen("screen-end");
+  let secs = 5;
+  const el = document.querySelector("#screen-end .stat-pill");
+  el.textContent = `بازگشت به صفحه اسم در ${persianDigits(secs)} ثانیه…`;
+  const iv = setInterval(()=>{
+    secs -= 1;
+    if(secs<=0){
+      clearInterval(iv);
+      resetToNameScreen();
+    } else {
+      el.textContent = `بازگشت به صفحه اسم در ${persianDigits(secs)} ثانیه…`;
+    }
+  }, 1000);
+}
+
+function resetToNameScreen(){
+  mode=null; roomCode=null; mySlot=null; oppName="";
+  document.getElementById("input-code").value = "";
+  document.getElementById("join-err").textContent = "";
+  // name already known for this session — skip straight back to mode select
+  goToModeScreen();
+}
+
+/* ---- name / mode wiring ---- */
+document.getElementById("btn-name-next").addEventListener("click", ()=>{
+  const v = document.getElementById("input-name").value.trim();
+  myName = v || "سرباز ناشناس";
+  saveName(myName);
+  goToModeScreen();
+});
+document.getElementById("input-name").addEventListener("keydown", e=>{ if(e.key==="Enter") document.getElementById("btn-name-next").click(); });
+
+function goToModeScreen(){
+  document.getElementById("mode-current-name").textContent = myName;
+  showScreen("screen-mode");
+}
+document.getElementById("btn-mode-changename").addEventListener("click", async ()=>{
+  await clearSavedName();
+  myName = "";
+  document.getElementById("input-name").value = "";
+  showScreen("screen-name");
+});
+
+document.getElementById("btn-open-board-1").addEventListener("click", async ()=>{
+  showScreen("screen-board");
+  const c = document.getElementById("board-container");
+  c.innerHTML = `<div class="empty-note">در حال بارگذاری…</div>`;
+  renderBoard(c, await loadBoard());
+});
+document.getElementById("btn-board-back").addEventListener("click", ()=> showScreen("screen-name"));
+
+/* ---- bot mode ---- */
+document.getElementById("btn-mode-bot").addEventListener("click", ()=>{
+  mode='bot'; mySlot=null; roomCode=null;
+  setupMatch("ربات دشمن", generateWalls());
+  botShootCd = 800;
+  startCountdownThenPlay();
+});
+
+/* ---- create room ---- */
+function genCode(){
+  return String(Math.floor(1000+Math.random()*9000));
+}
+document.getElementById("btn-mode-create").addEventListener("click", async ()=>{
+  mode='host'; mySlot='p1';
+  roomCode = genCode();
+  document.getElementById("waiting-code").textContent = roomCode.split("").join(" ");
+  showScreen("screen-waiting");
+  const wallsData = generateWalls();
+  await roomSet(`duel-room:${roomCode}`, {status:'waiting', p1:myName, p2:null, walls:wallsData, createdAt:Date.now()});
+  waitTimer = setInterval(async ()=>{
+    const meta = await roomGet(`duel-room:${roomCode}`);
+    if(meta && meta.p2){
+      clearInterval(waitTimer); waitTimer=null;
+      oppName = meta.p2;
+      setupMatch(oppName, meta.walls);
+      startCountdownThenPlay();
+    }
+  }, 1200);
+});
+document.getElementById("btn-waiting-cancel").addEventListener("click", ()=>{
+  if(waitTimer){ clearInterval(waitTimer); waitTimer=null; }
+  if(roomCode) roomDel(`duel-room:${roomCode}`);
+  showScreen("screen-mode");
+});
+
+/* ---- join room ---- */
+document.getElementById("btn-mode-join").addEventListener("click", ()=>{
+  document.getElementById("join-err").textContent = "";
+  document.getElementById("input-code").value = "";
+  showScreen("screen-join");
+});
+document.getElementById("btn-join-back").addEventListener("click", ()=> showScreen("screen-mode"));
+document.getElementById("btn-join-go").addEventListener("click", async ()=>{
+  const code = document.getElementById("input-code").value.trim();
+  const errEl = document.getElementById("join-err");
+  if(!/^[0-9]{4}$/.test(code)){ errEl.textContent = "یه کد ۴ رقمی معتبر وارد کن."; return; }
+  const meta = await roomGet(`duel-room:${code}`);
+  if(!meta){ errEl.textContent = "همچین اتاقی پیدا نشد."; return; }
+  if(meta.p2){ errEl.textContent = "این اتاق پره."; return; }
+  mode='join'; mySlot='p2'; roomCode=code;
+  meta.p2 = myName; meta.status='active';
+  await roomSet(`duel-room:${code}`, meta);
+  oppName = meta.p1;
+  setupMatch(oppName, meta.walls);
+  startCountdownThenPlay();
+});
+document.getElementById("input-code").addEventListener("keydown", e=>{ if(e.key==="Enter") document.getElementById("btn-join-go").click(); });
+
+/* init */
+(async function init(){
+  showScreen("screen-name");
+  render();
+  const saved = await loadSavedName();
+  if(saved){
+    myName = saved;
+    document.getElementById("input-name").value = saved;
+    goToModeScreen();
+  }
+})();
+})();
+</script>
+</body>
+</html>
